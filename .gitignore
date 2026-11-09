@@ -1,0 +1,28 @@
+# 面向开发者的完整技术文档（本地保留，不提交）
+README_FULL.md
+
+# 工作区记忆（本地）
+.workbuddy/
+
+# 接口探测脚本：本地排查用，不属于本项目
+netease_probe/
+
+# 签名密钥：绝对不能提交
+key_exchange/
+keystore/
+*.jks
+*.keystore
+
+# 构建产物：由 GitHub Actions 生成，统一在 Release 页提供
+dist/
+build/
+build_out.txt
+
+# 截图 / 监测日志（仅本地排查用）
+shots/
+monitor/
+
+# IDE
+.idea/
+*.iml
+*.idsig

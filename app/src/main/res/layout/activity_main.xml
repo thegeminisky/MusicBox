@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg"
+    android:orientation="vertical">
+
+    <com.mbox.music.TopTabs
+        android:id="@+id/topTabs"
+        android:layout_width="match_parent"
+        android:layout_height="76dp" />
+
+    <FrameLayout
+        android:id="@+id/panelContainer"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <include
+            android:id="@+id/panelHome"
+            layout="@layout/panel_home" />
+
+        <include
+            android:id="@+id/panelSearch"
+            layout="@layout/panel_search"
+            android:visibility="gone" />
+
+        <include
+            android:id="@+id/panelSettings"
+            layout="@layout/panel_settings"
+            android:visibility="gone" />
+
+        <com.mbox.music.MiniPlayerBar
+            android:id="@+id/miniBar"
+            android:layout_width="match_parent"
+            android:layout_height="58dp"
+            android:layout_gravity="bottom"
+            android:layout_marginLeft="14dp"
+            android:layout_marginRight="14dp"
+            android:layout_marginBottom="16dp" />
+    </FrameLayout>
+</LinearLayout>

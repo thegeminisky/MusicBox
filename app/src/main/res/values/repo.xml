@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 远程仓库，设置页「关于」里显示并可点击跳转 -->
+    <string name="repo_url">https://github.com/thegeminisky/MusicBox.git</string>
+</resources>

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<merge xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <ImageView
+        android:id="@+id/miniCover"
+        android:layout_width="42dp"
+        android:layout_height="42dp"
+        android:layout_marginLeft="9dp"
+        android:background="@drawable/bg_cover"
+        android:clipToOutline="true"
+        android:contentDescription="封面"
+        android:scaleType="centerCrop" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="12dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/miniTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="marquee"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:singleLine="true"
+            android:text=""
+            android:textColor="@color/text"
+            android:textSize="13sp" />
+
+        <TextView
+            android:id="@+id/miniSub"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="1dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text=""
+            android:textColor="@color/text_dim"
+            android:textSize="10sp" />
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/miniPlay"
+        android:layout_width="46dp"
+        android:layout_height="46dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:contentDescription="播放或暂停"
+        android:padding="14dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_pause" />
+
+    <ImageView
+        android:id="@+id/miniNext"
+        android:layout_width="46dp"
+        android:layout_height="46dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:contentDescription="下一首"
+        android:padding="14dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_next" />
+
+    <ImageView
+        android:id="@+id/miniQueue"
+        android:layout_width="46dp"
+        android:layout_height="46dp"
+        android:layout_marginRight="5dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:contentDescription="播放列表"
+        android:padding="14dp"
+        android:scaleType="fitCenter"
+        android:src="@drawable/ic_queue" />
+</merge>

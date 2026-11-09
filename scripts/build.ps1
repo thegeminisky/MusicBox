@@ -1,0 +1,198 @@
+param(
+    [string]$ToolsDir = $(if ($env:ANDROID_TOOLS) { $env:ANDROID_TOOLS } else { "D:\android-tools" }),
+    # Release signing is the default. Pass -DebugKey to fall back to the public AOSP key.
+    [switch]$DebugKey,
+    [string]$KsPath = "",
+    [string]$KsAlias = "musicbox",
+    # Never put the keystore password in this file. Pass -KsPass, set the
+    # MB_KS_PASS environment variable, or keep it in key_exchange/pass.txt
+    # (that file is gitignored and never leaves this machine).
+    [string]$KsPass = "",
+    [string]$KeyPass = ""
+)
+
+# Keep this file pure ASCII: Windows PowerShell 5.1 decodes .ps1 as ANSI when there
+# is no BOM, and any UTF-8 Chinese comment can break quote pairing during parsing.
+
+$ErrorActionPreference = "Stop"
+$root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+Set-Location $root
+
+$BT    = "$ToolsDir\build-tools\android-14"
+$PLAT  = "$ToolsDir\platforms\android-34"
+$JDK   = "$ToolsDir\jdk\jdk-17.0.20.1+1"
+$KS    = "$ToolsDir\keystore\debug.keystore"
+$JAVA  = "$JDK\bin\java.exe"
+$JAVAC = "$JDK\bin\javac.exe"
+$JAR   = "$JDK\bin\jar.exe"
+
+$OUT  = "$root\build"
+$SRC  = "$root\app\src\main"
+$DIST = "$root\dist"
+
+if (-not $KsPass -and $env:MB_KS_PASS) { $KsPass = $env:MB_KS_PASS }
+if (-not $KsPass) {
+    $localPass = "$root\key_exchange\pass.txt"
+    if (Test-Path $localPass) {
+        $KsPass = ([string](Get-Content $localPass -Raw)).Trim()
+    }
+}
+if (-not $KsPass -and -not $DebugKey) {
+    throw "signing password missing: set MB_KS_PASS, pass -KsPass, or put it in key_exchange\pass.txt"
+}
+
+# ---- version: MAJOR.MINOR come from version.config, PATCH = commits since BASE_COMMIT ----
+$versionFile = "$root\version.config"
+if (-not (Test-Path $versionFile)) { throw "missing version file: $versionFile" }
+$cfg = @{}
+foreach ($line in (Get-Content $versionFile)) {
+    $t = ([string]$line).Trim()
+    if ($t -eq "" -or $t.StartsWith("#")) { continue }
+    $kv = $t.Split("=", 2)
+    if ($kv.Count -eq 2) { $cfg[$kv[0].Trim()] = $kv[1].Trim() }
+}
+$major = [int]$cfg["MAJOR"]
+$minor = [int]$cfg["MINOR"]
+$baseCommit = $cfg["BASE_COMMIT"]
+$patch = 0
+try {
+    if ($baseCommit -eq "ROOT") {
+        $c = (& git rev-list --count HEAD 2>$null)
+        if ($c) { $patch = [int](([string]$c).Trim()) - 1 }
+    } else {
+        $p = (& git rev-list --count "${baseCommit}..HEAD" 2>$null)
+        if ($p) { $patch = [int](([string]$p).Trim()) }
+    }
+} catch { }
+if ($patch -lt 0) { $patch = 0 }
+$versionName = "$major.$minor.$patch"
+$versionCode = $major * 10000 + $minor * 100 + $patch
+
+foreach ($f in @("$BT\aapt2.exe", "$BT\lib\d8.jar", "$BT\lib\apksigner.jar",
+                 "$BT\zipalign.exe", "$PLAT\android.jar", $JAVAC)) {
+    if (-not (Test-Path $f)) { throw "missing build input: $f (use -ToolsDir to override)" }
+}
+
+# Resolve a real python.exe. Entries under WindowsApps are Store stubs, not interpreters.
+$PY = $env:PYTHON_EXE
+if (-not $PY) {
+    foreach ($c in (Get-Command python.exe -All -ErrorAction SilentlyContinue)) {
+        if ($c.Source -and $c.Source -notlike "*WindowsApps*") { $PY = $c.Source; break }
+    }
+}
+if (-not $PY) {
+    # versions\<ver> are NTFS junctions, which Get-ChildItem -Recurse refuses to descend
+    # into. Wildcard resolution works, so probe a few known layouts instead.
+    $patterns = @(
+        "$env:USERPROFILE\.workbuddy\binaries\python\versions\*\python.exe",
+        "$env:LOCALAPPDATA\Programs\Python\Python*\python.exe",
+        "C:\Python*\python.exe"
+    )
+    foreach ($p in $patterns) {
+        $r = Resolve-Path $p -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($r) { $PY = $r.Path; break }
+    }
+}
+if (-not $PY -or -not (Test-Path $PY)) {
+    throw "python.exe not found. Pass -ToolsDir or set PYTHON_EXE to a real interpreter."
+}
+
+if (Test-Path $OUT) { Remove-Item -Recurse -Force $OUT }
+New-Item -ItemType Directory -Force -Path "$OUT\gen" | Out-Null
+New-Item -ItemType Directory -Force -Path "$OUT\classes" | Out-Null
+New-Item -ItemType Directory -Force -Path "$OUT\dex" | Out-Null
+New-Item -ItemType Directory -Force -Path $DIST | Out-Null
+
+Write-Host "[1/10] aapt2 compile"
+& "$BT\aapt2.exe" compile --dir "$SRC\res" -o "$OUT\res.zip"
+if ($LASTEXITCODE -ne 0) { throw "aapt2 compile failed" }
+
+Write-Host "[2/10] aapt2 link"
+& "$BT\aapt2.exe" link -o "$OUT\base.apk" -I "$PLAT\android.jar" `
+    --manifest "$SRC\AndroidManifest.xml" --java "$OUT\gen" `
+    --min-sdk-version 26 --target-sdk-version 34 `
+    --version-code $versionCode --version-name $versionName "$OUT\res.zip"
+if ($LASTEXITCODE -ne 0) { throw "aapt2 link failed" }
+
+Write-Host "[3/10] generate BuildInfo"
+$fullHash = "unknown"
+try {
+    $f = (& git rev-parse HEAD 2>$null)
+    if ($f) { $fullHash = ([string]$f).Trim() }
+} catch { }
+$buildTime = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
+$genPkg = "$OUT\gen\com\mbox\music"
+New-Item -ItemType Directory -Force -Path $genPkg | Out-Null
+$buildInfo = @"
+package com.mbox.music;
+
+/** Generated by scripts/build.ps1 - do not edit. */
+public final class BuildInfo {
+    public static final String VERSION_NAME = "$versionName";
+    public static final String FULL_VERSION = "$versionName";
+    public static final String BUILD_TIME = "$buildTime";
+    public static final String COMMIT_HASH = "$fullHash";
+}
+"@
+Set-Content -Path "$genPkg\BuildInfo.java" -Value $buildInfo -Encoding ASCII
+Write-Host "        version $versionName (code $versionCode, PATCH from ${baseCommit})"
+
+Write-Host "[4/10] collect sources"
+$sources = @()
+$sources += Get-ChildItem -Recurse -Filter *.java -Path "$SRC\java" | ForEach-Object { $_.FullName }
+$sources += Get-ChildItem -Recurse -Filter *.java -Path "$OUT\gen" | ForEach-Object { $_.FullName }
+$sourcesFile = "$OUT\sources.txt"
+Set-Content -Path $sourcesFile -Value $sources -Encoding ASCII
+Write-Host "        $($sources.Count) java files"
+
+Write-Host "[5/10] javac"
+$argFile = "@$sourcesFile"
+& $JAVAC -encoding UTF-8 -source 8 -target 8 -Xlint:-options -nowarn `
+    -classpath "$PLAT\android.jar" -d "$OUT\classes" $argFile
+if ($LASTEXITCODE -ne 0) { throw "javac failed" }
+
+Write-Host "[6/10] jar"
+Push-Location "$OUT\classes"
+& $JAR cf "$OUT\classes.jar" .
+Pop-Location
+if ($LASTEXITCODE -ne 0) { throw "jar failed" }
+
+Write-Host "[7/10] d8"
+& $JAVA -cp "$BT\lib\d8.jar" com.android.tools.r8.D8 --release --min-api 26 `
+    --lib "$PLAT\android.jar" --output "$OUT\dex" "$OUT\classes.jar"
+if ($LASTEXITCODE -ne 0) { throw "d8 failed" }
+
+Write-Host "[8/10] assemble apk"
+& $PY "$root\scripts\assemble.py" "$OUT\base.apk" "$OUT\dex\classes.dex" "$OUT\unsigned.apk"
+if ($LASTEXITCODE -ne 0) { throw "assemble failed" }
+
+Write-Host "[9/10] zipalign"
+& "$BT\zipalign.exe" -p -f 4 "$OUT\unsigned.apk" "$OUT\aligned.apk"
+if ($LASTEXITCODE -ne 0) { throw "zipalign failed" }
+
+Write-Host "[10/10] apksigner"
+$APK = "$DIST\musicbox.apk"
+if ($DebugKey) {
+    $KS = "$ToolsDir\keystore\debug.keystore"
+    $KsAlias = "androiddebugkey"
+    $KsPass = "android"
+    $KeyPass = "android"
+    Write-Host "        using DEBUG keystore (the AOSP debug key is public, do not distribute)"
+} else {
+    $KS = if ($KsPath) { $KsPath } else { "$root\key_exchange\release.keystore" }
+    if (-not $KeyPass) { $KeyPass = $KsPass }
+    Write-Host "        using RELEASE keystore, alias=$KsAlias"
+}
+if (-not (Test-Path $KS)) { throw "keystore missing: $KS" }
+& $JAVA -jar "$BT\lib\apksigner.jar" sign --ks $KS --ks-key-alias $KsAlias `
+    --ks-pass "pass:$KsPass" --key-pass "pass:$KeyPass" `
+    --v1-signing-enabled true --v2-signing-enabled true --min-sdk-version 26 `
+    --out $APK "$OUT\aligned.apk"
+if ($LASTEXITCODE -ne 0) { throw "apksigner failed" }
+
+& $JAVA -jar "$BT\lib\apksigner.jar" verify --print-certs $APK
+if ($LASTEXITCODE -ne 0) { throw "apksigner verify failed" }
+
+Write-Host ""
+Write-Host "OK  $APK"
+Write-Host ("    " + [math]::Round((Get-Item $APK).Length / 1KB, 1) + " KB")

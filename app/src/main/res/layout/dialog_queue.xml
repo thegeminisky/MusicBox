@@ -32,13 +32,6 @@
                 android:textColor="@color/text"
                 android:textSize="16sp"
                 android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="长按歌曲可复制歌名"
-                android:textColor="@color/text_faint"
-                android:textSize="10sp" />
         </LinearLayout>
 
         <View

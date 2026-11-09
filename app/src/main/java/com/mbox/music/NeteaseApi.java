@@ -398,7 +398,8 @@ public final class NeteaseApi {
             if (p == null) return "?";
             if (p.contains("/jdymusic/")) return "jdymusic";
             if (p.contains("/ymusic/")) return "ymusic";
-            return p.length() > 20 ? p.substring(0, 20) : p;
+            // 播放地址的路径里可能带临时签名，日志只留分类、不回显原文
+            return "other";
         } catch (Exception e) {
             return "?";
         }

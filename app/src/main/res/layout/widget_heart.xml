@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  1×1 桌面小组件。桌面格子是「窄而高」的（本机 4 列时约 66×85dp），
-  底板直接铺满会成长方形，所以这里放一块正方形卡片居中：
-  尺寸在运行期按格子短边再算一次（见 HeartWidget），这里的 60dp 只是老系统的兜底。
+  1×1 桌面小组件。桌面格子是「窄而高」的（本机 4 列时一格约 78×95dp），
+  底板铺满会既变长方形、又比旁边的应用图标大一圈，所以：
+  - 卡片固定 58dp（和桌面图标实测同宽），靠顶对齐，图标那一排才会是齐的；
+  - 不再铺满格子，剩下的空间就当作图标下方本该放名字的位置。
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widgetHeartRoot"
@@ -11,17 +12,17 @@
 
     <FrameLayout
         android:id="@+id/widgetHeartTile"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        android:layout_gravity="center"
+        android:layout_width="58dp"
+        android:layout_height="58dp"
+        android:layout_gravity="top|center_horizontal"
         android:background="@drawable/bg_widget_heart">
 
         <ImageView
             android:id="@+id/widgetHeartIcon"
-            android:layout_width="34dp"
-            android:layout_height="34dp"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
             android:layout_gravity="center"
             android:contentDescription="@string/widget_heart_label"
-            android:src="@drawable/ic_heart" />
+            android:src="@drawable/ic_heart_white" />
     </FrameLayout>
 </FrameLayout>

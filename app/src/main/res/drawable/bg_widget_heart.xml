@@ -1,30 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 小组件底板：正方形卡片。颜色沿用 App 的红黑一套，略偏红调，桌面上不会看成一块黑 -->
-<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-    <item>
-        <shape android:shape="rectangle">
-            <gradient
-                android:angle="270"
-                android:startColor="#3E2C30"
-                android:endColor="#1B1719" />
-            <corners android:radius="16dp" />
-            <stroke
-                android:width="1dp"
-                android:color="#6B3A41" />
-        </shape>
-    </item>
-
-    <!-- 红心后面一层红晕，给卡片一点光源感 -->
-    <item
-        android:width="48dp"
-        android:height="48dp"
-        android:gravity="center">
-        <shape android:shape="oval">
-            <gradient
-                android:type="radial"
-                android:gradientRadius="24dp"
-                android:startColor="#5CE5484D"
-                android:endColor="#00E5484D" />
-        </shape>
-    </item>
-</layer-list>
+<!-- 小组件底板：沿用应用主图标的红底，去掉描边，圆角对齐桌面图标的方形轮廓 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:startColor="#F4595E"
+        android:endColor="#DA353B" />
+    <corners android:radius="13dp" />
+</shape>

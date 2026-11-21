@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">云乐盒</string>
+    <string name="widget_heart_label">红心歌单</string>
+    <string name="widget_heart_desc">点一下，直接播放我的红心歌单</string>
 </resources>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 1×1 桌面小组件：红心歌单。updatePeriodMillis=0，内容固定，不需要定时刷新。 -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="40dp"
+    android:minHeight="40dp"
+    android:minResizeWidth="40dp"
+    android:minResizeHeight="40dp"
+    android:targetCellWidth="1"
+    android:targetCellHeight="1"
+    android:resizeMode="none"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/widget_heart"
+    android:previewLayout="@layout/widget_heart"
+    android:previewImage="@drawable/widget_heart_preview"
+    android:description="@string/widget_heart_desc"
+    android:widgetCategory="home_screen" />

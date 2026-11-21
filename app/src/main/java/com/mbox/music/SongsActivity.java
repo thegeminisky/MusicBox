@@ -35,6 +35,8 @@ public class SongsActivity extends Activity implements PlayerManager.Listener {
 
     private String musicU;
     private String pageMode;
+    /** 桌面小组件点进来时为 true：这一轮加载完必须立刻开始播放，不看「自动播放」设置。 */
+    private boolean forcePlay;
 
     @Override
     protected void onCreate(Bundle b) {
@@ -46,8 +48,11 @@ public class SongsActivity extends Activity implements PlayerManager.Listener {
         musicU = sp.getString(MainActivity.KEY_MUSIC_U, null);
         pageMode = getIntent().getStringExtra("mode");
         if (pageMode == null) pageMode = "daily";
+        forcePlay = getIntent().getBooleanExtra("force_play", false);
         if (musicU == null) {
             Toast.makeText(this, "请先登录", Toast.LENGTH_SHORT).show();
+            // 从桌面小组件点进来的：直接把登录页顶上来，而不是退回桌面
+            if (forcePlay) startActivity(new Intent(this, LoginActivity.class));
             finish();
             return;
         }
@@ -109,6 +114,45 @@ public class SongsActivity extends Activity implements PlayerManager.Listener {
     protected void onActivityResult(int req, int res, android.content.Intent data) {
         super.onActivityResult(req, res, data);
         ExportHelper.handleResult(this, req, res, data);
+    }
+
+    /**
+     * 红心页已经开在栈里时，小组件再点一次走这里：
+     * 不叠新页面，直接把这一页顶上来并续播（已经在播就只跳转，不打断进度）。
+     */
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        if (intent == null) return;
+        setIntent(intent);
+
+        String m = intent.getStringExtra("mode");
+        if (m == null) m = pageMode;
+        boolean force = intent.getBooleanExtra("force_play", false);
+
+        if (!m.equals(pageMode)) {
+            pageMode = m;
+            forcePlay = force;
+            tvTitle.setText(titleFor(pageMode));
+            tvSub.setText("连接中…");
+            tvLoading.setText("加载中…");
+            songs.clear();
+            adapter.notifyDataSetChanged();
+            showLoading();
+            if ("heartbeat".equals(pageMode)) loadHeartbeat();
+            else loadPlaylist();
+            return;
+        }
+        if (force) {
+            forcePlay = true;
+            if (songs.isEmpty()) {
+                tvLoading.setText("加载中…");
+                showLoading();
+                loadPlaylist();
+            } else {
+                playForced();
+            }
+        }
     }
 
     /** 记录歌单最后一次被打开播放的时间，首页「我的歌单」按它从新到旧排序。 */
@@ -207,6 +251,12 @@ public class SongsActivity extends Activity implements PlayerManager.Listener {
         tvTitle.setText(heartbeat ? "心动模式" : titleFor(pageMode));
         tvSub.setText(songs.size() + " 首" + (heartbeat ? " · 按你的口味连续推荐" : ""));
 
+        // 桌面小组件点进来：不看「进入歌单自动播放」怎么配，列表到手就播
+        if (forcePlay) {
+            playForced();
+            return;
+        }
+
         // 「进入歌单自动播放」开启时，进来直接列表循环播全部；
         // 若勾了「仅限日推/心动/红心」，其他歌单进来只展示列表。
         boolean auto = sp.getBoolean(MainActivity.KEY_AUTOPLAY_ALL, true);
@@ -251,6 +301,20 @@ public class SongsActivity extends Activity implements PlayerManager.Listener {
         }
         pm.setQueue(songs, 0, true, PlayerManager.MODE_LOOP_LIST);
         Toast.makeText(this, "播放全部 · 列表循环", Toast.LENGTH_SHORT).show();
+    }
+
+    /**
+     * 小组件直达：列表已经在手就立刻播。
+     * 队列本来就是这一份时只做「续播」，不从头再来，免得把正在听的进度顶掉。
+     */
+    private void playForced() {
+        forcePlay = false;
+        if (songs.isEmpty()) return;
+        if (sameAsCurrentQueue(songs)) {
+            if (!pm.isPlaying()) pm.toggle();
+            return;
+        }
+        pm.setQueue(songs, 0, true, PlayerManager.MODE_LOOP_LIST);
     }
 
     // ------------------------------------------------------------ 播放状态

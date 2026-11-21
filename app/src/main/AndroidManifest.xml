@@ -50,5 +50,18 @@
             android:name=".PlayerService"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
+
+        <!-- 1×1 桌面小组件：红心歌单。exported 必须为 true，桌面/系统要给它发更新广播 -->
+        <receiver
+            android:name=".HeartWidget"
+            android:exported="true"
+            android:label="@string/widget_heart_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_heart_info" />
+        </receiver>
     </application>
 </manifest>

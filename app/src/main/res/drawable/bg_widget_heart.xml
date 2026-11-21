@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 小组件底板：和 App 内卡片同一套深色 + 1dp 描边，暗色桌面上也能看出是一整块 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="270"
+                android:startColor="#262B34"
+                android:endColor="#15181D" />
+            <corners android:radius="20dp" />
+            <stroke
+                android:width="1dp"
+                android:color="#333A45" />
+        </shape>
+    </item>
+
+    <!-- 红心后面一层很淡的红晕，避免白底/亮色壁纸上图标发飘 -->
+    <item
+        android:width="46dp"
+        android:height="46dp"
+        android:gravity="center">
+        <shape android:shape="oval">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="23dp"
+                android:startColor="#3DE5484D"
+                android:endColor="#00E5484D" />
+        </shape>
+    </item>
+</layer-list>
